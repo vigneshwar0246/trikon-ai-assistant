@@ -24,7 +24,13 @@ English & Hindi · Streaming responses · Hands-free conversations · Local infe
 
 
 
-https://github.com/user-attachments/assets/98632865-c63d-4988-a2cc-54b72ab98caf
+
+
+https://github.com/user-attachments/assets/d4d64adf-8817-4738-82f7-5de926539b6e
+
+
+
+
 
 
 
@@ -108,8 +114,8 @@ The documented development workflow uses **Windows 11 and PowerShell**. Install 
 ### 1. Clone and install the backend
 
 ```powershell
-git clone https://github.com/vigneshwar0246/tricon.git
-cd tricon
+git clone https://github.com/vigneshwar0246/trikon-ai-assistant.git
+cd trikon-ai-assistant
 cd backend
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
