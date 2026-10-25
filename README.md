@@ -2,7 +2,7 @@
 
 ![Trikon Voice AI — Your voice. Your models. Your machine.](docs/assets/hero.svg)
 
-# Trikon Voice AI
+# 🎙️ Trikon Voice AI
 
 **A local-first voice assistant that listens, thinks, and speaks on your machine.**
 
@@ -14,33 +14,85 @@ English & Hindi · Streaming responses · Hands-free conversations · Local infe
 ![Ollama](https://img.shields.io/badge/Ollama-101827?style=for-the-badge&logo=ollama&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-101827?style=for-the-badge&logo=python&logoColor=FFD43B)
 
-[Watch the demo](#-demo) · [Explore features](#-features) · [Get started](#-quick-start) · [Architecture](#-architecture) · [API](#-api-reference)
+<br>
+
+[![▶ Watch the full demo on Google Drive](https://img.shields.io/badge/▶_Watch_the_full_demo-Google_Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1awEVxasPa87gMyqYLw5BDSi4_6R1yPsF/view?usp=sharing)
+
+[Watch the demo](#-demo--downloads) · [About](#-about-the-project) · [Features](#-features) · [Get started](#-quick-start) · [Architecture](#-architecture) · [API](#-api-reference)
 
 </div>
 
 ---
 
-## 🎬 Demo
+## 📖 About the project
 
+**Trikon Voice AI** is a complete, privacy-friendly voice assistant that runs on your own computer. You speak (or type) in **English or Hindi**, and the assistant transcribes your voice, thinks of an answer with a local language model, and speaks the reply back — all without sending your conversations to a paid cloud AI service.
 
+It is built as a three-part system:
 
+- **A React + TypeScript web interface** with a live voice orb, a dashboard, conversation history, settings, and performance readouts.
+- **A FastAPI backend** that orchestrates the full pipeline: speech-to-text, command routing, language-model generation, and text-to-speech.
+- **Local AI engines** — **Faster-Whisper** for speech recognition, **Ollama** (Qwen 2.5 3B by default) for answers, and **Piper** for natural-sounding voices.
 
+### Why it exists
 
-https://github.com/user-attachments/assets/d4d64adf-8817-4738-82f7-5de926539b6e
+Most voice assistants depend on hosted APIs: they cost money, add network delay, and send your voice off-device. Trikon Voice AI shows that a responsive, bilingual voice assistant can run entirely on a consumer laptop (the benchmarks were recorded on an RTX 3050 Laptop GPU), while still offering streaming replies, hands-free conversations, barge-in interruption, and transparent diagnostics.
 
+### What you can do with it
 
+- Hold a natural **voice-to-voice conversation** in English or Hindi.
+- **Type** to the same local model with session-aware memory.
+- Go **hands-free**: the assistant detects when you start and stop speaking, answers aloud, then listens again.
+- **Interrupt** an answer mid-sentence with optional barge-in.
+- Use **local voice commands** such as “What time is it?”, “Repeat that”, or “Clear conversation”.
+- **Inspect performance**: see STT, LLM, TTS, and total timings for every turn, plus runtime and GPU diagnostics.
 
+### Who it is for
 
+Developers, students, and tinkerers who want a hackable reference for a **local-first speech pipeline** — or anyone who wants a private assistant that keeps working without a hosted AI subscription.
 
+---
 
+## 🎬 Demo & downloads
 
-[Download the demo MP4](https://github.com/vigneshwar0246/trikon-ai-assistant/blob/main/artifacts/demo/voice-ai-demo-cut.mp4)
+<div align="center">
+
+### 🎥 Watch the full demo
+
+[![Open the demo on Google Drive](https://img.shields.io/badge/📂_Open_in_Google_Drive-Watch_%26_Download-34A853?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1awEVxasPa87gMyqYLw5BDSi4_6R1yPsF/view?usp=sharing)
+
+<sub>Opens in your browser · plays with the original audio · download available from the Drive viewer</sub>
+
+</div>
+
+<br>
+
+https://github.com/user-attachments/assets/6f5372f8-ebed-4472-9d72-0f5a4bc3e2e7
+
+<br>
 
 Watch the demonstration to see Trikon Voice AI handle voice input, local AI responses, and spoken output.
 
-Press **Play** to watch the full demo with its original audio. The embedded player provides playback, seeking, volume, and fullscreen controls in Markdown viewers that support HTML video. If your viewer blocks embedded media, use the video link above or open [the local browser player](docs/demo.html).
+### 📥 Download options
 
-**GitHub rendering:** the repository-relative video above does not enable GitHub's inline attachment player. To play with sound inside the GitHub README, upload the MP4 using the steps below and replace this video block with the generated attachment URL.
+| Option | Link | Notes |
+|:---|:---|:---|
+| ☁️ **Google Drive** (full demo) | [Open / download from Drive](https://drive.google.com/file/d/1awEVxasPa87gMyqYLw5BDSi4_6R1yPsF/view?usp=sharing) | Best option for streaming or downloading the complete recording. |
+| 📁 **Repository download directory** | [`demo/trikon real demo (1).mp4`](demo/trikon%20real%20demo%20%281%29.mp4) | Full demo video stored in the project's `demo/` folder. |
+| 🎞️ **Short cut** | [`artifacts/demo/voice-ai-demo-cut.mp4`](https://github.com/vigneshwar0246/trikon-ai-assistant/blob/main/artifacts/demo/voice-ai-demo-cut.mp4) | Trimmed version of the demo. |
+| 🖥️ **Local browser player** | [`docs/demo.html`](docs/demo.html) | Plays the video offline from a cloned copy. |
+
+**Local download directory (on the author's machine):**
+
+```text
+D:\Trikon-Voice-AI\demo\trikon real demo (1).mp4
+```
+
+> [!TIP]
+> If you cloned the repository, the same file lives at `demo/trikon real demo (1).mp4` relative to the project root. Rename it to something without spaces or brackets (for example `trikon-real-demo.mp4`) if you plan to script against it.
+
+> [!NOTE]
+> Google Drive must be shared as **“Anyone with the link → Viewer”** for the buttons above to open for everyone. GitHub rejects repository files larger than 100 MB, so very large recordings should stay on Drive (or use Git LFS).
 
 <details>
 <summary><strong>Enable a playable video directly inside this README on GitHub</strong></summary>
@@ -48,12 +100,14 @@ Press **Play** to watch the full demo with its original audio. The embedded play
 GitHub's inline attachment player needs a GitHub-hosted video attachment URL. A relative repository MP4 link is a fallback, not a guaranteed inline player.
 
 1. Open this README in GitHub's web editor.
-2. Drag `artifacts/demo/voice-ai-demo-cut.mp4` into the Demo section and wait for the upload to finish.
+2. Drag the MP4 (for example `demo/trikon real demo (1).mp4`) into the Demo section and wait for the upload to finish.
 3. Keep the generated `https://github.com/user-attachments/assets/...` URL on its own line, preview the README, and save the change.
 
-The supplied video is below GitHub's 10 MB free-plan video attachment limit. No conversion is needed. See [GitHub's attachment documentation](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files) and the [README video discussion](https://github.com/orgs/community/discussions/19403).
+The video must be below GitHub's 10 MB free-plan video attachment limit for this method. See [GitHub's attachment documentation](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files) and the [README video discussion](https://github.com/orgs/community/discussions/19403).
 
 </details>
+
+---
 
 ## ✨ Features
 
@@ -230,7 +284,7 @@ Values below reflect the committed example/default configuration, not every deve
 | `OLLAMA_HI_MODEL` | Optional | Separate installed Hindi chat model; defaults to `OLLAMA_MODEL` when unset |
 | `OLLAMA_TIMEOUT_SECONDS` | `120` | Generation timeout |
 | `OLLAMA_TEMPERATURE` | `0.1` | Lower-variance generation for concise factual answers |
-| `OLLAMA_NUM_CTX` | `2048` | Context window; matches the practical local Qwen 7B runtime budget and lowers prompt latency |
+| `OLLAMA_NUM_CTX` | `2048` | Context window; a smaller window keeps prompt latency low on local hardware |
 | `VOICE_NUM_PREDICT` / `VOICE_HI_NUM_PREDICT` | `80` / `96` | Spoken-response token ceilings |
 | `STT_MODEL_PATH` | `models/faster-whisper-base` | Primary recognition model |
 | `STT_MULTILINGUAL_MODEL_PATH` | `models/faster-whisper-small` in example | Optional Hindi recognition model |
@@ -378,11 +432,13 @@ Trikon-Voice-AI/
 │   ├── tests/                  # Backend verification
 │   ├── scripts/                # Benchmarks and demo speech generation
 │   └── wakeword/               # Training/evaluation scaffolding; not active
+├── demo/
+│   └── trikon real demo (1).mp4  # Full real demo recording (also on Google Drive)
 ├── docs/                       # Architecture, benchmarks, acceptance guide
 │   ├── assets/                 # README banner, poster, animated preview
 │   └── demo.html               # Local video player
 ├── artifacts/demo/
-│   └── voice-ai-demo-cut.mp4   # Full project demo
+│   └── voice-ai-demo-cut.mp4   # Short project demo cut
 └── scripts/                    # Local acceptance and recording helpers
 ```
 
@@ -399,6 +455,7 @@ Trikon-Voice-AI/
 | CUDA configured but unverified | Inspect `/api/diagnostics` and perform a real transcription; CPU fallback may be in use. |
 | Old response audio missing | Generate another response; audio retention is temporary. |
 | Hands-free captures unwanted sounds | Adjust the silence interval and use headphones or a quieter environment. |
+| Demo video won't open from Drive | Set the Drive file's sharing to “Anyone with the link → Viewer”. |
 
 ## 🔒 Data, boundaries & current status
 
@@ -432,9 +489,9 @@ These are small-sample measurements, approximately **6% earlier first audio**, n
 
 The clips contained recognition errors with both settings, and Qwen produced inaccurate/repetitive Hindi answers. Faster decoding does not resolve these quality limits; real microphone recordings and listening tests are still needed. All 43 backend tests passed after these changes.
 
-## Project hashtags
+## 🏷️ Project hashtags
 
-`#TrikonVoiceAI` `#VoiceAssistant` `#LocalAI` `#ConversationalAI` `#SpeechToText` `#TextToSpeech` `#Ollama` `#FasterWhisper` `#PiperTTS` `#FastAPI` `#React` `#TypeScript` `#HindiAI`
+`#TrikonVoiceAI` `#VoiceAssistant` `#VoiceAI` `#LocalAI` `#OfflineAI` `#PrivacyFirst` `#ConversationalAI` `#SpeechToText` `#TextToSpeech` `#SpeechRecognition` `#Ollama` `#Qwen` `#LLM` `#FasterWhisper` `#Whisper` `#PiperTTS` `#FastAPI` `#Python` `#React` `#TypeScript` `#TailwindCSS` `#Vite` `#HindiAI` `#MultilingualAI` `#EdgeAI` `#OpenSource` `#AIAssistant` `#HandsFree`
 
 ## 📚 Further reading
 
@@ -445,6 +502,7 @@ The clips contained recognition errors with both settings, and Qwen produced ina
 | [Benchmark report](docs/benchmark-results.md) | Measurements, hardware context, and caveats |
 | [Raw benchmark data](docs/benchmark-2026-10-21.json) | Recorded requests and metrics |
 | [Wake-word work](backend/wakeword/README.md) | Carrot model training/evaluation scaffolding |
+| [Hindi quality audit](hindi.md) | Hindi STT/LLM/TTS findings and regression commands |
 
 ---
 
@@ -453,6 +511,8 @@ The clips contained recognition errors with both settings, and Qwen produced ina
 **Speak naturally. Keep inference local.**<br>
 Built with React · FastAPI · Faster-Whisper · Ollama · Piper
 
-[Back to top ↑](#trikon-voice-ai)
+[![▶ Watch the full demo on Google Drive](https://img.shields.io/badge/▶_Watch_the_full_demo-Google_Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1awEVxasPa87gMyqYLw5BDSi4_6R1yPsF/view?usp=sharing)
+
+[Back to top ↑](#-trikon-voice-ai)
 
 </div>
