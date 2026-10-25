@@ -24,12 +24,13 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen2.5:3b"
+    ollama_hi_model: str | None = None
     ollama_timeout_seconds: float = Field(default=120.0, gt=0, le=600)
-    ollama_temperature: float = Field(default=0.2, ge=0, le=2)
-    ollama_num_ctx: int = Field(default=4096, ge=512, le=32768)
-    ollama_num_predict: int = Field(default=160, ge=16, le=1024)
+    ollama_temperature: float = Field(default=0.1, ge=0, le=2)
+    ollama_num_ctx: int = Field(default=2048, ge=512, le=32768)
+    ollama_num_predict: int = Field(default=96, ge=16, le=1024)
     voice_num_predict: int = Field(default=80, ge=16, le=256)
-    voice_hi_num_predict: int = Field(default=192, ge=32, le=512)
+    voice_hi_num_predict: int = Field(default=96, ge=32, le=512)
 
     session_max_turns: int = Field(default=12, ge=1, le=100)
     session_max_count: int = Field(default=500, ge=1, le=10000)

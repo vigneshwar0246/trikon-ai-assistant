@@ -50,6 +50,30 @@ class OllamaClient:
         if self._client is not None:
             await self._client.aclose()
 
+    async def warm_model(self) -> None:
+        """Keep the configured local model resident without generating a reply."""
+        try:
+            response = await self._get_client().post(
+                f"{self.settings.ollama_base_url}/api/generate",
+                json={
+                    "model": self.settings.ollama_model, "prompt": "Ready", "stream": False,
+                    "keep_alive": "30m", "options": {
+                        "num_predict": 1, "num_ctx": self.settings.ollama_num_ctx,
+                        "temperature": self.settings.ollama_temperature,
+                    },
+                },
+                timeout=self.settings.ollama_timeout_seconds,
+            )
+            if response.status_code == 404:
+                raise OllamaModelMissingError(
+                    f"Ollama model '{self.settings.ollama_model}' is missing. Pull it with 'ollama pull {self.settings.ollama_model}'."
+                )
+            response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise OllamaUnavailableError("Ollama model warm-up timed out.") from exc
+        except httpx.HTTPError as exc:
+            raise OllamaUnavailableError("Ollama model warm-up failed.") from exc
+
     async def list_models(self, timeout_seconds: float | None = None) -> list[str]:
         try:
             response = await self._get_client().get(
@@ -86,13 +110,14 @@ class OllamaClient:
         except (httpx.HTTPError, ValueError, AttributeError, TypeError) as exc:
             raise OllamaUnavailableError("Ollama runtime details are unavailable.") from exc
 
-    async def chat(self, messages: list[dict[str, str]], *, num_predict: int | None = None) -> tuple[str, dict[str, Any]]:
+    async def chat(self, messages: list[dict[str, str]], *, num_predict: int | None = None,
+                   model: str | None = None) -> tuple[str, dict[str, Any]]:
         """Generate a reply without pulling a missing model automatically."""
         try:
             response = await self._get_client().post(
                     f"{self.settings.ollama_base_url}/api/chat",
                     json={
-                        "model": self.settings.ollama_model,
+                        "model": model or self.settings.ollama_model,
                         "messages": messages,
                         "stream": False,
                         "options": {
@@ -110,13 +135,13 @@ class OllamaClient:
 
         if response.status_code == 404:
             raise OllamaModelMissingError(
-                f"Ollama model '{self.settings.ollama_model}' is missing. Pull it with 'ollama pull {self.settings.ollama_model}'."
+                f"Ollama model '{model or self.settings.ollama_model}' is missing. Pull it with 'ollama pull {model or self.settings.ollama_model}'."
             )
         if response.is_error:
             detail = response.text[:300]
             if "model" in detail.lower() and ("not found" in detail.lower() or "pull" in detail.lower()):
                 raise OllamaModelMissingError(
-                    f"Ollama model '{self.settings.ollama_model}' is missing. Pull it with 'ollama pull {self.settings.ollama_model}'."
+                    f"Ollama model '{model or self.settings.ollama_model}' is missing. Pull it with 'ollama pull {model or self.settings.ollama_model}'."
                 )
             raise OllamaResponseError(f"Ollama returned HTTP {response.status_code}.")
 
@@ -130,7 +155,7 @@ class OllamaClient:
         return text.strip(), payload
 
     async def chat_stream(
-        self, messages: list[dict[str, str]], *, num_predict: int | None = None
+        self, messages: list[dict[str, str]], *, num_predict: int | None = None, model: str | None = None
     ) -> AsyncIterator[dict[str, Any]]:
         """Yield Ollama token events and one final metadata event from its NDJSON stream."""
         completed = False
@@ -139,7 +164,7 @@ class OllamaClient:
                 "POST",
                 f"{self.settings.ollama_base_url}/api/chat",
                 json={
-                    "model": self.settings.ollama_model,
+                    "model": model or self.settings.ollama_model,
                     "messages": messages,
                     "stream": True,
                     "options": {
@@ -152,7 +177,7 @@ class OllamaClient:
             ) as response:
                 if response.status_code == 404:
                     raise OllamaModelMissingError(
-                        f"Ollama model '{self.settings.ollama_model}' is missing. Pull it with 'ollama pull {self.settings.ollama_model}'."
+                        f"Ollama model '{model or self.settings.ollama_model}' is missing. Pull it with 'ollama pull {model or self.settings.ollama_model}'."
                     )
                 if response.is_error:
                     await response.aread()

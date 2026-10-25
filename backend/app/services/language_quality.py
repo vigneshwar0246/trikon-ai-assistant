@@ -5,7 +5,22 @@ import unicodedata
 
 
 HINDI_INSTRUCTION = (
-    "Language and Script Rules:\n"
+    "Reply in accurate, natural Hindi using Devanagari. Understand Hindi written in Roman letters. "
+    "When Hindi is selected, reply in Hindi and Devanagari even if the question is asked in English. "
+    "Answer the latest question directly in one short sentence. For common factual questions, give the "
+    "answer rather than saying you are uncertain. If a transcript has an unfamiliar or malformed word, "
+    "ask one short clarifying question instead of inventing an answer. Use history only for a relevant follow-up."
+)
+
+# Only exact, recurring speech-recognition confusions belong here. This is not a
+# general Hindi spellchecker: changing arbitrary words would be less reliable
+# than asking the user to repeat themselves.
+HINDI_STT_CORRECTIONS = {
+    "बारद": "भारत",
+    "राज्टानी": "राजधानी",
+}
+
+LEGACY_HINDI_INSTRUCTION = (
     "1. If the user asks in Hindi — whether written in Devanagari (हिंदी) or in Roman/English letters "
     "(Hinglish, e.g. 'rajdhani kya hai?', 'rashtriya pashu') — reply in natural, grammatically correct "
     "Hindi using Devanagari script.\n"
@@ -29,6 +44,15 @@ HINDI_INSTRUCTION = (
 def normalize_text(text: str) -> str:
     """Keep letters, vowel marks, names and punctuation; never guess corrections."""
     return " ".join(unicodedata.normalize("NFC", text).split())
+
+
+def normalize_hindi_transcript(text: str) -> str:
+    """Correct only known whole-word STT confusions before language-model use."""
+    return re.sub(
+        r"(?<!\S)(%s)(?!\S)" % "|".join(map(re.escape, HINDI_STT_CORRECTIONS)),
+        lambda match: HINDI_STT_CORRECTIONS[match.group(1)],
+        normalize_text(text),
+    )
 
 
 def text_quality_error(text: str) -> str | None:

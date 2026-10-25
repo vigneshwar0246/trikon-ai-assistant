@@ -86,6 +86,29 @@ async def test_manual_language_persists_in_session_prompt() -> None:
 
 
 @pytest.mark.asyncio
+async def test_english_voice_question_can_request_hindi_response(tmp_path: Path) -> None:
+    """Response language must not force Faster-Whisper to decode English as Hindi."""
+    stt = Mock(
+        transcribe=Mock(return_value=(
+            "Tell me the capital of India in Hindi",
+            {"language": "en", "language_probability": 0.99},
+        )),
+        settings=Settings(),
+    )
+    llm = Mock(chat=AsyncMock(return_value=("भारत की राजधानी नई दिल्ली है।", {"total_duration": 1_000_000})))
+    tts = Mock(available_for=Mock(return_value=True), synthesize_to_file=Mock(return_value=(tmp_path / "reply.wav", 1.0)))
+    pipeline = VoicePipeline(llm=llm, sessions=SessionManager(), stt=stt, tts=tts)
+
+    result = await pipeline.voice(tmp_path / "question.wav", response_language="hi")
+
+    assert stt.transcribe.call_args.args[1] is None
+    assert result.language == "hi"
+    assert "नई दिल्ली" in result.response
+    assert "even if the question is asked in English" in llm.chat.await_args.args[0][0]["content"]
+    assert tts.synthesize_to_file.call_args.args[1] == "hi"
+
+
+@pytest.mark.asyncio
 async def test_cancelled_stream_does_not_commit_partial_assistant_turn(tmp_path: Path) -> None:
     class StreamingLlm:
         async def chat_stream(self, messages, *, num_predict):

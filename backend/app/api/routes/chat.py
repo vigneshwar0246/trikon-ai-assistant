@@ -1,12 +1,17 @@
 """Text chat and conversation session management routes."""
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+import json
+import logging
+
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 
 from app.schemas.chat import ChatRequest, ChatResponse, MetricsResponse, SessionDeleteResponse, SessionSummary
 from app.services.llm import OllamaModelMissingError, OllamaResponseError, OllamaUnavailableError
 from app.services.session_manager import SessionCapacityError
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+logger = logging.getLogger(__name__)
 
 
 def _service_error(error: Exception) -> HTTPException:
@@ -31,6 +36,26 @@ async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
         metrics=MetricsResponse(**result.metrics),
         created_at=result.created_at,
     )
+
+
+@router.post("/stream")
+async def chat_stream(payload: ChatRequest, request: Request) -> StreamingResponse:
+    async def events():
+        try:
+            async for event in request.app.state.pipeline.chat_stream(
+                payload.message, payload.session_id, payload.language
+            ):
+                if await request.is_disconnected():
+                    return
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        except SessionCapacityError as exc:
+            yield json.dumps({"type": "error", "detail": str(exc)}) + "\n"
+        except (OllamaUnavailableError, OllamaModelMissingError, OllamaResponseError) as exc:
+            yield json.dumps({"type": "error", "detail": str(exc)}) + "\n"
+        except Exception:
+            logger.exception("Unexpected streaming text failure")
+            yield json.dumps({"type": "error", "detail": "The local text pipeline failed."}) + "\n"
+    return StreamingResponse(events(), media_type="application/x-ndjson", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/sessions", response_model=list[SessionSummary])

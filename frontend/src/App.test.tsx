@@ -46,7 +46,10 @@ describe("AI Voice Assistant", () => {
   it("sends text to the backend and displays its actual response", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ status: "degraded", backend: { available: true }, services: { api: true, llm: true, stt: false, tts: false }, models: { llm: "qwen2.5:3b" } }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "test-session", response: "A response from Ollama", metrics: { llm_ms: 31, total_ms: 32 } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(
+        '{"type":"text","delta":"A response "}\n{"type":"text","delta":"from Ollama"}\n{"type":"done","session_id":"test-session","response":"A response from Ollama","metrics":{"llm_ms":31,"total_ms":32}}\n',
+        { status: 200, headers: { "Content-Type": "application/x-ndjson" } },
+      ))
       .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "test-session", deleted: true }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
@@ -55,7 +58,7 @@ describe("AI Voice Assistant", () => {
     await user.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("A response from Ollama")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith("/api/chat", expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/chat/stream", expect.objectContaining({ method: "POST" }));
     await user.click(screen.getByRole("button", { name: "Clear" }));
     expect(await screen.findByText("No messages yet")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenLastCalledWith("/api/chat/test-session", expect.objectContaining({ method: "DELETE" }));

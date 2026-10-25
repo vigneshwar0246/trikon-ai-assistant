@@ -221,10 +221,11 @@ Values below reflect the committed example/default configuration, not every deve
 |:---|:---|:---|
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local inference service |
 | `OLLAMA_MODEL` | `qwen2.5:3b` | Chat model; pull separately |
+| `OLLAMA_HI_MODEL` | Optional | Separate installed Hindi chat model; defaults to `OLLAMA_MODEL` when unset |
 | `OLLAMA_TIMEOUT_SECONDS` | `120` | Generation timeout |
-| `OLLAMA_TEMPERATURE` | `0.2` | Generation sampling |
-| `OLLAMA_NUM_CTX` | `4096` | Context window |
-| `VOICE_NUM_PREDICT` | `80` | Spoken-response token ceiling |
+| `OLLAMA_TEMPERATURE` | `0.1` | Lower-variance generation for concise factual answers |
+| `OLLAMA_NUM_CTX` | `2048` | Context window; matches the practical local Qwen 7B runtime budget and lowers prompt latency |
+| `VOICE_NUM_PREDICT` / `VOICE_HI_NUM_PREDICT` | `80` / `96` | Spoken-response token ceilings |
 | `STT_MODEL_PATH` | `models/faster-whisper-base` | Primary recognition model |
 | `STT_MULTILINGUAL_MODEL_PATH` | `models/faster-whisper-small` in example | Optional Hindi recognition model |
 | `STT_DEVICE` / `STT_COMPUTE_TYPE` | `cpu` / `int8` | Recognition execution settings |
@@ -248,6 +249,7 @@ See [backend/.env.example](backend/.env.example) and [settings definitions](back
 | `GET` | `/api/health` | API, model, and per-language readiness |
 | `GET` | `/api/diagnostics` | Runtime, hardware, CUDA, STT, and Ollama diagnostics |
 | `POST` | `/api/chat` | Text turn with optional session/language |
+| `POST` | `/api/chat/stream` | NDJSON text deltas, completion metadata, and timings |
 | `GET` | `/api/chat/sessions` | List bounded in-memory sessions |
 | `DELETE` | `/api/chat/{session_id}` | Clear a session |
 | `POST` | `/api/voice` | Multipart audio → transcript, answer, audio URL, timings |

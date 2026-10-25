@@ -1,5 +1,4 @@
 [
   {"path": "samples/english-short.wav", "language": "en", "reference": "Replace with the exact lawful recording transcript"},
-  {"path": "samples/hindi-short.wav", "language": "hi", "reference": "सटीक संदर्भ पाठ यहाँ लिखें"},
-  {"path": "samples/tamil-short.wav", "language": "ta", "reference": "சரியான குறிப்புப் பதிவை இங்கே எழுதவும்"}
+  {"path": "samples/hindi-short.wav", "language": "hi", "reference": "Replace with the exact Hindi recording transcript"}
 ]

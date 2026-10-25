@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { deleteSession, getHealth, sendText, sendVoice, streamVoice } from "../lib/api";
+import { deleteSession, getHealth, sendVoice, streamText, streamVoice } from "../lib/api";
 import { useHandsFree } from "../hooks/useHandsFree";
 import type { AssistantPhase, Message, Metrics, SystemHealth } from "../types";
 
@@ -40,7 +40,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const [metrics, setMetrics] = useState<Metrics>({});
   const [language, setLanguageState] = useState(() => {
     const saved = localStorage.getItem("trikon-language");
-    return saved === "hi" ? saved : "en";
+    return saved === "hi" ? "hi" : "en";
   });
   const [health, setHealth] = useState<SystemHealth>(defaultHealth);
   const [healthLoading, setHealthLoading] = useState(false);
@@ -54,6 +54,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const finishPlayback = useRef<(() => void) | null>(null);
   const stopHandsFreeRef = useRef<(() => void) | null>(null);
   const handsFreeAbort = useRef<AbortController | null>(null);
+  const textAbort = useRef<AbortController | null>(null);
+  const textSubmitting = useRef(false);
   const turnGeneration = useRef(0);
 
   const addMessage = useCallback((role: Message["role"], content: string, audioUrl?: string) => {
@@ -77,6 +79,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const setLanguage = useCallback((next: string) => {
     turnGeneration.current += 1;
     handsFreeAbort.current?.abort();
+    textAbort.current?.abort();
     stopSpeaking();
     setLanguageState(next);
     localStorage.setItem("trikon-language", next);
@@ -89,6 +92,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     handsFreeAbort.current = controller;
     let playbackChain = Promise.resolve();
     let assistantText = "";
+    const assistantId = newId();
+    let assistantStarted = false;
     let resultMetrics: Metrics = {};
     let action: string | undefined;
     const playChunk = (url: string) => new Promise<void>((resolve) => {
@@ -115,7 +120,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       });
     });
     try {
-      await streamVoice(blob, sessionId.current, language || undefined, controller.signal, (event) => {
+      await streamVoice(blob, sessionId.current, language, controller.signal, (event) => {
         if (generation !== turnGeneration.current) return;
         if (event.type === "transcript" && event.transcript) {
           setPhase("generating");
@@ -123,6 +128,16 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           if (!language && event.language) setLanguageState(event.language);
         } else if (event.type === "text") {
           assistantText += event.delta ?? "";
+          setPhase("generating");
+          if (!assistantStarted && event.delta) {
+            assistantStarted = true;
+            setMessages((current) => [...current, {
+              id: assistantId, role: "assistant", content: event.delta!, createdAt: new Date().toISOString(),
+            }]);
+          } else if (event.delta) {
+            setMessages((current) => current.map((item) => item.id === assistantId
+              ? { ...item, content: item.content + event.delta! } : item));
+          }
         } else if (event.type === "audio" && event.url) {
           playbackChain = playbackChain.then(() => playChunk(event.url!));
         } else if (event.type === "done") {
@@ -135,7 +150,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
             firstTokenMs: Number(raw.first_token_ms) || undefined,
           };
           if (action === "clear_conversation") setMessages([]);
-          addMessage("assistant", event.response || assistantText);
+          if (!assistantStarted && (event.response || assistantText)) {
+            addMessage("assistant", event.response || assistantText);
+          }
           if (event.speech_available === false) setError(event.speech_detail || "Local speech output is unavailable for this language; the text reply is shown.");
           setMetrics({ ...resultMetrics, captureMs, vadEndMs });
         }
@@ -182,18 +199,48 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
 
   const submitText = useCallback(async (text: string) => {
     const clean = text.trim();
-    if (!clean || phase === "processing") return;
+    if (!clean || textSubmitting.current) return;
+    textSubmitting.current = true;
+    const controller = new AbortController();
+    textAbort.current = controller;
+    const assistantId = newId();
+    let assistantStarted = false;
     addMessage("user", clean);
     setError(null);
     setPhase("processing");
     try {
-      const result = await sendText(clean, sessionId.current, language || undefined);
-      sessionId.current = result.sessionId;
-      addMessage("assistant", result.content, result.audioUrl);
-      setMetrics(result.metrics);
+      await streamText(clean, sessionId.current, language, controller.signal, (event) => {
+        if (event.type === "text" && event.delta) {
+          setPhase("generating");
+          if (!assistantStarted) {
+            assistantStarted = true;
+            setMessages((current) => [...current, { id: assistantId, role: "assistant", content: event.delta!, createdAt: new Date().toISOString() }]);
+          } else {
+            setMessages((current) => current.map((item) => item.id === assistantId ? { ...item, content: item.content + event.delta } : item));
+          }
+        } else if (event.type === "done") {
+          sessionId.current = event.session_id ?? sessionId.current;
+          if (event.action === "clear_conversation") setMessages([]);
+          const raw = event.metrics ?? {};
+          setMetrics({
+            llmMs: Number(raw.llm_ms) || undefined, totalMs: Number(raw.total_ms) || undefined,
+            firstTokenMs: Number(raw.first_token_ms) || undefined,
+          });
+        }
+      });
       setPhase("idle");
-    } catch (reason) { handleError(reason); }
-  }, [addMessage, handleError, language, phase]);
+    } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        setMessages((current) => current.filter((item) => item.id !== assistantId));
+        setPhase("idle");
+      } else {
+        handleError(reason);
+      }
+    } finally {
+      if (textAbort.current === controller) textAbort.current = null;
+      textSubmitting.current = false;
+    }
+  }, [addMessage, handleError, language]);
 
   const stopRecording = useCallback(() => {
     if (recorder.current?.state === "recording") recorder.current.stop();
@@ -221,7 +268,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         setPhase("processing");
         try {
           const blob = new Blob(chunks.current, { type: recorder.current?.mimeType || "audio/webm" });
-          const result = await sendVoice(blob, sessionId.current, language || undefined);
+          const result = await sendVoice(blob, sessionId.current, language);
           sessionId.current = result.sessionId;
           if (result.action === "clear_conversation") setMessages([]);
           addMessage("user", result.transcript);
@@ -242,6 +289,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
 
   const clearConversation = useCallback(async () => {
     const previousSession = sessionId.current;
+    textAbort.current?.abort();
     setMessages([]); setMetrics({}); setError(null); setPhase("idle"); sessionId.current = newId();
     try { await deleteSession(previousSession); }
     catch { setError("Conversation cleared on this device, but the backend could not confirm session deletion."); }
@@ -264,7 +312,10 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     const timer = window.setTimeout(() => { void refreshHealth(); }, 0);
     return () => window.clearTimeout(timer);
   }, [refreshHealth]);
-  useEffect(() => () => stream.current?.getTracks().forEach((track) => track.stop()), []);
+  useEffect(() => () => {
+    textAbort.current?.abort();
+    stream.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   const value = useMemo(() => ({
     messages, phase, error, metrics, health, healthLoading, language, setLanguage, submitText,

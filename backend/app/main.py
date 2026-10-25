@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
@@ -19,6 +21,8 @@ from app.services.session_manager import SessionManager
 from app.services.stt import SpeechToTextService
 from app.services.tts import TextToSpeechService
 
+logger = logging.getLogger(__name__)
+
 settings = get_settings()
 
 
@@ -37,10 +41,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         tts=app.state.tts,
         voice_num_predict=settings.voice_num_predict,
         voice_hi_num_predict=settings.voice_hi_num_predict,
+        hindi_model=settings.ollama_hi_model,
+    )
+    warmup = asyncio.create_task(app.state.ollama.warm_model())
+    warmup.add_done_callback(
+        lambda task: logger.warning("Ollama model warm-up failed: %s", task.exception())
+        if not task.cancelled() and task.exception() else None
     )
     try:
         yield
     finally:
+        if not warmup.done():
+            warmup.cancel()
+        await asyncio.gather(warmup, return_exceptions=True)
         await app.state.ollama.close()
 
 

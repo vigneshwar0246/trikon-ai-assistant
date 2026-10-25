@@ -58,12 +58,67 @@ export async function sendText(message: string, sessionId: string, language?: st
   return { content, audioUrl: resolveAudioUrl(audio), sessionId: String(data.session_id ?? sessionId), metrics: parseMetrics(data, performance.now() - started) };
 }
 
-export async function sendVoice(blob: Blob, sessionId: string, language?: string, signal?: AbortSignal) {
+export interface TextStreamEvent {
+  type: "text" | "done" | "error";
+  session_id?: string;
+  delta?: string;
+  response?: string;
+  detail?: string;
+  action?: string;
+  metrics?: UnknownRecord;
+}
+
+async function readNdjson<T extends { type: string; detail?: string }>(
+  response: Response, signal: AbortSignal, onEvent: (event: T) => void,
+): Promise<void> {
+  if (!response.ok || !response.body) {
+    await parseResponse(response);
+    throw new Error("The streaming response was unavailable.");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const event = JSON.parse(line) as T;
+        if (event.type === "error") throw new Error(event.detail || "The streaming request failed.");
+        onEvent(event);
+      }
+      if (done) break;
+    }
+    if (buffer.trim()) {
+      const event = JSON.parse(buffer) as T;
+      if (event.type === "error") throw new Error(event.detail || "The streaming request failed.");
+      onEvent(event);
+    }
+  } finally {
+    if (signal.aborted) await reader.cancel().catch(() => undefined);
+  }
+}
+
+export async function streamText(
+  message: string, sessionId: string, language: string | undefined, signal: AbortSignal,
+  onEvent: (event: TextStreamEvent) => void,
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+    method: "POST", signal, headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, session_id: sessionId, language: language || undefined }),
+  });
+  await readNdjson(response, signal, onEvent);
+}
+
+export async function sendVoice(blob: Blob, sessionId: string, responseLanguage?: string, signal?: AbortSignal) {
   const body = new FormData();
   const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "mp4" : "webm";
   body.append("audio", blob, `voice.${extension}`);
   body.append("session_id", sessionId);
-  if (language) body.append("language", language);
+  if (responseLanguage) body.append("response_language", responseLanguage);
   const started = performance.now();
   const data = await parseResponse(await fetch(`${API_BASE}/api/voice`, { method: "POST", body, signal }));
   const transcript = readPath(data, ["transcript", "user_text", "input"]);
@@ -104,7 +159,7 @@ export interface VoiceStreamEvent {
 export async function streamVoice(
   blob: Blob,
   sessionId: string,
-  language: string | undefined,
+  responseLanguage: string | undefined,
   signal: AbortSignal,
   onEvent: (event: VoiceStreamEvent) => void,
 ): Promise<void> {
@@ -112,34 +167,12 @@ export async function streamVoice(
   const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "mp4" : "webm";
   body.append("audio", blob, `voice.${extension}`);
   body.append("session_id", sessionId);
-  if (language) body.append("language", language);
+  if (responseLanguage) body.append("response_language", responseLanguage);
   const response = await fetch(`${API_BASE}/api/voice/stream`, { method: "POST", body, signal });
-  if (!response.ok || !response.body) {
-    await parseResponse(response);
-    throw new Error("The streaming voice response was unavailable.");
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const event = JSON.parse(line) as VoiceStreamEvent;
-      if (event.url) event.url = resolveAudioUrl(event.url);
-      if (event.type === "error") throw new Error(event.detail || "The streaming voice pipeline failed.");
-      onEvent(event);
-    }
-    if (done) break;
-  }
-  if (buffer.trim()) {
-    const event = JSON.parse(buffer) as VoiceStreamEvent;
-    if (event.type === "error") throw new Error(event.detail || "The streaming voice pipeline failed.");
+  await readNdjson(response, signal, (event: VoiceStreamEvent) => {
+    if (event.url) event.url = resolveAudioUrl(event.url);
     onEvent(event);
-  }
+  });
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {

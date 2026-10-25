@@ -42,6 +42,27 @@ async def test_ollama_missing_model_is_reported_without_fabrication() -> None:
 
 
 @pytest.mark.asyncio
+async def test_warm_model_uses_the_same_runtime_options_as_chat() -> None:
+    requests: list[dict] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={"done": True})
+
+    client = OllamaClient(Settings(ollama_model="qwen2.5:3b", ollama_num_ctx=2048, ollama_temperature=0.1))
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    try:
+        await client.warm_model()
+    finally:
+        await client.close()
+
+    assert requests == [{
+        "model": "qwen2.5:3b", "prompt": "Ready", "stream": False, "keep_alive": "30m",
+        "options": {"num_predict": 1, "num_ctx": 2048, "temperature": 0.1},
+    }]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("payload", [
     [{"error": "generation failed"}],
     [{"message": None}],

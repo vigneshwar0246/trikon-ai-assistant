@@ -1,4 +1,5 @@
 import asyncio
+import json
 import pytest
 from unittest.mock import AsyncMock
 
@@ -37,6 +38,29 @@ def test_chat_uses_session_history_and_returns_measured_fields() -> None:
         {"role": "user", "content": "Continue"},
     ]
     assert history.json()[0]["message_count"] == 4
+
+
+def test_chat_stream_emits_real_chunks_and_commits_once_complete() -> None:
+    class FakeOllama:
+        async def chat_stream(self, messages, *, num_predict=None):
+            assert messages[-1] == {"role": "user", "content": "Hello"}
+            yield {"token": "Streamed "}
+            yield {"token": "answer"}
+            yield {"done": True, "metadata": {"total_duration": 9_000_000}}
+
+    sessions = SessionManager(max_turns=3, max_sessions=3)
+    with TestClient(app) as client:
+        app.state.sessions = sessions
+        app.state.pipeline = VoicePipeline(llm=FakeOllama(), sessions=sessions)
+        response = client.post("/api/chat/stream", json={"message": "Hello", "session_id": "stream-test"})
+        history = client.get("/api/chat/sessions")
+
+    events = [json.loads(line) for line in response.text.splitlines()]
+    assert response.status_code == 200
+    assert [event.get("delta") for event in events if event["type"] == "text"] == ["Streamed ", "answer"]
+    assert events[-1]["response"] == "Streamed answer"
+    assert events[-1]["metrics"]["first_token_ms"] is not None
+    assert history.json()[0]["message_count"] == 2
 
 
 def test_chat_reports_ollama_offline_and_missing_model() -> None:

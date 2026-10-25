@@ -61,6 +61,7 @@ async def voice(
     audio: UploadFile = File(...),
     session_id: str | None = Form(default=None, max_length=128),
     language: str | None = Form(default=None, pattern="^(en|hi)$"),
+    response_language: str | None = Form(default=None, pattern="^(en|hi)$"),
 ) -> VoiceResponse:
     settings = get_settings()
     if audio.content_type and audio.content_type.split(";", 1)[0].lower() not in ALLOWED_CONTENT_TYPES:
@@ -68,7 +69,9 @@ async def voice(
         raise HTTPException(status_code=415, detail="The uploaded content type is not recognized as audio.")
     temp_path = await _save_upload(audio, settings.audio_max_size_mb * 1024 * 1024)
     try:
-        result = await request.app.state.pipeline.voice(temp_path, session_id, language)
+        result = await request.app.state.pipeline.voice(
+            temp_path, session_id, language, response_language=response_language
+        )
     except SessionCapacityError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except SpeechModelNotInstalledError as exc:
@@ -107,6 +110,7 @@ async def voice_stream(
     audio: UploadFile = File(...),
     session_id: str | None = Form(default=None, max_length=128),
     language: str | None = Form(default=None, pattern="^(en|hi)$"),
+    response_language: str | None = Form(default=None, pattern="^(en|hi)$"),
 ) -> StreamingResponse:
     """NDJSON stream: transcript, text deltas, ordered chunked-Piper audio, then metrics."""
     settings = get_settings()
@@ -114,7 +118,9 @@ async def voice_stream(
 
     async def events():
         try:
-            async for event in request.app.state.pipeline.voice_stream(temp_path, session_id, language):
+            async for event in request.app.state.pipeline.voice_stream(
+                temp_path, session_id, language, response_language=response_language
+            ):
                 yield json.dumps(event, ensure_ascii=False) + "\n"
         except (SpeechModelNotInstalledError, VoiceModelNotInstalledError, OllamaUnavailableError,
                 OllamaModelMissingError, TranscriptionError, OllamaResponseError, SpeechSynthesisError) as exc:

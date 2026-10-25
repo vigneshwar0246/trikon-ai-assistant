@@ -8,7 +8,7 @@ from typing import Any
 
 from app.core.cuda import configure_cuda_dll_directories
 from app.core.config import Settings, get_settings
-from app.services.language_quality import normalize_text, text_quality_error
+from app.services.language_quality import normalize_hindi_transcript, normalize_text, text_quality_error
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +151,8 @@ class SpeechToTextService:
             raise TranscriptionError("No speech was detected in the uploaded audio.")
         if text_quality_error(text):
             raise TranscriptionError("Speech recognition was unclear. Please repeat or type your question.")
+        if selected_language == "hi":
+            text = normalize_hindi_transcript(text)
         return text, info
 
     def _decode(self, audio_path: str | Path, language: str | None) -> tuple[str, Any]:

@@ -65,7 +65,10 @@ async def collect_diagnostics(
 ) -> dict[str, Any]:
     """Collect bounded, safe checks without exposing private paths or environment values."""
     configure_cuda_dll_directories()
-    import ctranslate2
+    try:
+        import ctranslate2
+    except ImportError:
+        ctranslate2 = None
 
     if request is not None:
         llm, stt, tts = request.app.state.ollama, request.app.state.stt, request.app.state.tts
@@ -98,7 +101,7 @@ async def collect_diagnostics(
         checks["inference"] = _check("UNKNOWN", "A live inference probe was not requested." if installed else "Inference cannot be checked until the model is available.")
 
     try:
-        cuda_devices = ctranslate2.get_cuda_device_count()
+        cuda_devices = ctranslate2.get_cuda_device_count() if ctranslate2 is not None else 0
     except RuntimeError:
         cuda_devices = 0
     libraries = {}

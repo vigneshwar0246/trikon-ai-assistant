@@ -11,6 +11,7 @@ export function IntroPage() {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const [exiting, setExiting] = useState(false);
   const prefersReducedMotion =
     typeof window !== "undefined" &&
@@ -69,10 +70,11 @@ export function IntroPage() {
 
       {/* ── Full-screen video stage ── */}
       <section className="intro-video-stage" aria-label="Intro animation">
+        {!videoReady && <div className="intro-video-fallback" aria-hidden="true" />}
         {!videoFailed ? (
           <video
             ref={videoRef}
-            className="intro-video"
+            className={`intro-video${videoReady ? " intro-video-ready" : ""}`}
             src="/videos/intro-sphere.mp4"
             /* transparency: keep alpha channel if the codec supports it */
             autoPlay
@@ -81,12 +83,10 @@ export function IntroPage() {
             playsInline
             preload="auto"
             aria-hidden="true"
+            onCanPlay={() => setVideoReady(true)}
             onError={() => setVideoFailed(true)}
           />
-        ) : (
-          /* Fallback: orange gradient placeholder so layout stays intact */
-          <div className="intro-video-fallback" aria-hidden="true" />
-        )}
+        ) : null}
 
         <button
           className="intro-enter-btn"
