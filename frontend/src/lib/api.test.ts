@@ -18,6 +18,7 @@ describe("local API client", () => {
       (event) => { if (event.response) received.push(event.response); });
     expect(received).toEqual([text]);
     expect((fetchMock.mock.calls[0][1].body as FormData).get("response_language")).toBe("hi");
+    expect((fetchMock.mock.calls[0][1].body as FormData).get("language")).toBe("hi");
   });
 
   it("keeps API availability separate from degraded model readiness", async () => {
@@ -54,6 +55,7 @@ describe("local API client", () => {
     expect((form.get("audio") as File).name).toBe("voice.webm");
     expect(form.get("session_id")).toBe("session-1");
     expect(form.get("response_language")).toBe("hi");
+    expect(form.get("language")).toBe("hi");
   });
 
   it("does not invent a transcript or audio when the voice API omits them", async () => {

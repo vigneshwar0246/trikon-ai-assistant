@@ -67,6 +67,7 @@ class VoicePipeline:
         tts: TextToSpeechService | None = None,
         voice_num_predict: int = 80,
         voice_hi_num_predict: int = 96,
+        hindi_num_predict: int = 192,
         hindi_model: str | None = None,
     ) -> None:
         self.llm = llm or ollama_client
@@ -75,6 +76,7 @@ class VoicePipeline:
         self.tts = tts or tts_service
         self.voice_num_predict = voice_num_predict
         self.voice_hi_num_predict = voice_hi_num_predict
+        self.hindi_num_predict = hindi_num_predict
         self.hindi_model = hindi_model
 
     def _model_for_language(self, language: str | None) -> str | None:
@@ -119,7 +121,15 @@ class VoicePipeline:
             else:
                 messages.append({"role": "user", "content": message})
                 model = self._model_for_language(session.language)
-                response_text, metadata = await self.llm.chat(messages, model=model) if model else await self.llm.chat(messages)
+                if session.language == "hi":
+                    options = {"num_predict": self.hindi_num_predict}
+                    if model:
+                        options["model"] = model
+                    response_text, metadata = await self.llm.chat(messages, **options)
+                elif model:
+                    response_text, metadata = await self.llm.chat(messages, model=model)
+                else:
+                    response_text, metadata = await self.llm.chat(messages)
                 validate_response(response_text, metadata)
                 llm_ms = round((metadata.get("total_duration", 0) or 0) / 1_000_000, 2)
                 if llm_ms <= 0:
@@ -169,7 +179,15 @@ class VoicePipeline:
             metadata: dict[str, Any] = {}
             first_token_ms: float | None = None
             model = self._model_for_language(session.language)
-            stream = self.llm.chat_stream(messages, model=model) if model else self.llm.chat_stream(messages)
+            if session.language == "hi":
+                options = {"num_predict": self.hindi_num_predict}
+                if model:
+                    options["model"] = model
+                stream = self.llm.chat_stream(messages, **options)
+            elif model:
+                stream = self.llm.chat_stream(messages, model=model)
+            else:
+                stream = self.llm.chat_stream(messages)
             async for event in stream:
                 token = event.get("token")
                 if isinstance(token, str) and token:
@@ -373,7 +391,8 @@ class VoicePipeline:
                         first_token_ms = round((perf_counter() - llm_started) * 1000, 2)
                     response_text += token
                     buffer += token
-                    # Hindi output is checked as a complete answer before display or speech.
+                    # Hindi is buffered until complete-response validation, so a
+                    # truncated answer is never shown or spoken as if it were final.
                     if output_language != "hi":
                         yield {"type": "text", "delta": token}
                         chunk, buffer = self._take_speakable_chunk(buffer, language=output_language)

@@ -1,5 +1,6 @@
 import { Languages } from "lucide-react";
 import { useVoice } from "../context/VoiceContext";
+import { warmLanguageModel } from "../lib/api";
 
 const languages = [
   { code: "en", label: "English", native: "English" },
@@ -16,7 +17,7 @@ export function LanguageSwitcher() {
         {languages.map(({ code, label, native }) => (
           <button type="button" key={code} className={language === code ? "active" : ""}
             aria-pressed={language === code} aria-label={`Use ${label}`} disabled={busy}
-            onClick={() => setLanguage(code)}>
+            onClick={() => { setLanguage(code); void warmLanguageModel(code); }}>
             <span>{native}</span><small>{label}</small>
           </button>
         ))}

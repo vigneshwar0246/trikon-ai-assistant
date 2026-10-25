@@ -113,12 +113,17 @@ export async function streamText(
   await readNdjson(response, signal, onEvent);
 }
 
-export async function sendVoice(blob: Blob, sessionId: string, responseLanguage?: string, signal?: AbortSignal) {
+export async function sendVoice(blob: Blob, sessionId: string, language?: string, signal?: AbortSignal) {
   const body = new FormData();
   const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "mp4" : "webm";
   body.append("audio", blob, `voice.${extension}`);
   body.append("session_id", sessionId);
-  if (responseLanguage) body.append("response_language", responseLanguage);
+  if (language) {
+    // The selected mode is intentionally strict for voice: do not make Whisper
+    // guess between English and Hindi after the user has chosen one.
+    body.append("language", language);
+    body.append("response_language", language);
+  }
   const started = performance.now();
   const data = await parseResponse(await fetch(`${API_BASE}/api/voice`, { method: "POST", body, signal }));
   const transcript = readPath(data, ["transcript", "user_text", "input"]);
@@ -159,7 +164,7 @@ export interface VoiceStreamEvent {
 export async function streamVoice(
   blob: Blob,
   sessionId: string,
-  responseLanguage: string | undefined,
+  language: string | undefined,
   signal: AbortSignal,
   onEvent: (event: VoiceStreamEvent) => void,
 ): Promise<void> {
@@ -167,7 +172,10 @@ export async function streamVoice(
   const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "mp4" : "webm";
   body.append("audio", blob, `voice.${extension}`);
   body.append("session_id", sessionId);
-  if (responseLanguage) body.append("response_language", responseLanguage);
+  if (language) {
+    body.append("language", language);
+    body.append("response_language", language);
+  }
   const response = await fetch(`${API_BASE}/api/voice/stream`, { method: "POST", body, signal });
   await readNdjson(response, signal, (event: VoiceStreamEvent) => {
     if (event.url) event.url = resolveAudioUrl(event.url);
@@ -177,6 +185,10 @@ export async function streamVoice(
 
 export async function deleteSession(sessionId: string): Promise<void> {
   await parseResponse(await fetch(`${API_BASE}/api/chat/${encodeURIComponent(sessionId)}`, { method: "DELETE" }));
+}
+
+export async function warmLanguageModel(language: string): Promise<void> {
+  await fetch(`${API_BASE}/api/models/warm/${encodeURIComponent(language)}`, { method: "POST" }).catch(() => undefined);
 }
 
 function toServiceState(value: unknown): ServiceState {

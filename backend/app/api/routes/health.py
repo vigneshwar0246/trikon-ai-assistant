@@ -1,13 +1,37 @@
 """Read-only health and local model availability checks."""
 
-from fastapi import APIRouter, Request
+import asyncio
+
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.core.config import get_settings
 from app.schemas.chat import HealthResponse, HealthService
 from app.services.diagnostics import collect_diagnostics
 from app.services.llm import OllamaResponseError, OllamaUnavailableError
+from app.services.stt import SpeechModelNotInstalledError
+from app.services.tts import VoiceModelNotInstalledError
 
 router = APIRouter(tags=["health"])
+
+
+@router.post("/models/warm/{language}", status_code=status.HTTP_202_ACCEPTED)
+async def warm_language_model(language: str, request: Request) -> dict[str, str]:
+    """Load the selected language model when the user switches modes."""
+    if language not in {"en", "hi"}:
+        raise HTTPException(status_code=422, detail="Language must be English or Hindi.")
+    settings = get_settings()
+    model = settings.ollama_hi_model if language == "hi" else settings.ollama_model
+    try:
+        await asyncio.gather(
+            request.app.state.ollama.warm_model(model),
+            asyncio.to_thread(request.app.state.stt.prepare, language),
+            asyncio.to_thread(request.app.state.tts.prepare, language),
+        )
+    except OllamaUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (SpeechModelNotInstalledError, VoiceModelNotInstalledError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"status": "warming", "language": language}
 
 
 @router.get("/diagnostics")

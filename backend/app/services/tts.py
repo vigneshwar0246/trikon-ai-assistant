@@ -100,6 +100,10 @@ class TextToSpeechService:
                     raise VoiceModelNotInstalledError("The Piper voice could not be loaded. Check its model and config files.") from exc
         return self._voices[language]
 
+    def prepare(self, language: str) -> None:
+        """Load the selected speech voice before a reply needs to be played."""
+        self._get_voice(language)
+
     def synthesize_to_file(self, text: str, language: str = "en") -> tuple[Path, float]:
         """Create one WAV file and return its path and measured synthesis time."""
         from time import perf_counter

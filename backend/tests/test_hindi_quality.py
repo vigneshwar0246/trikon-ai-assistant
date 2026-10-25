@@ -69,7 +69,7 @@ async def test_roman_hindi_question_receives_hindi_system_prompt():
     # System prompt must include Roman Hindi understanding instruction
     assert "Roman" in system_content or "Hinglish" in system_content or "roman" in system_content.lower()
     assert "Devanagari" in system_content
-    assert "\u091a\u0947\u0928\u094d\u0928\u0908" in result.response  # चेन्नई
+    assert "\u0928\u0908 \u0926\u093f\u0932\u094d\u0932\u0940" in result.response
 
 
 @pytest.mark.asyncio
@@ -202,4 +202,7 @@ def test_known_hindi_stt_confusions_are_corrected_as_whole_words_only():
     noisy = "\u092c\u093e\u0930\u0926 \u0915\u0940 \u0930\u093e\u091c\u094d\u091f\u093e\u0928\u0940 \u0915\u094d\u092f\u093e \u0939\u0948?"
     corrected = "\u092d\u093e\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0927\u093e\u0928\u0940 \u0915\u094d\u092f\u093e \u0939\u0948?"
     assert normalize_hindi_transcript(noisy) == corrected
+    assert normalize_hindi_transcript("\u092d\u093e\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0926\u093e\u0928\u0940") == "\u092d\u093e\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0927\u093e\u0928\u0940"
+    assert normalize_hindi_transcript("\u092d\u093e\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u094d\u0926\u093e\u0928\u0940") == "\u092d\u093e\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0927\u093e\u0928\u0940"
+    assert normalize_hindi_transcript("\u092d\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0927\u093e\u0928\u0940") == "\u092d\u093e\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0927\u093e\u0928\u0940"
     assert normalize_hindi_transcript("\u092c\u093e\u0930\u0926\u093f\u0936 \u0930\u093e\u091c\u094d\u091f\u093e\u0928\u0940") == "\u092c\u093e\u0930\u0926\u093f\u0936 \u0930\u093e\u091c\u0927\u093e\u0928\u0940"

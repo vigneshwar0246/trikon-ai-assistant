@@ -42,7 +42,7 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-On this machine, the previous Python 3.11 virtual environment points to an inaccessible interpreter. The verified runtime was created separately with the available Python 3.13.9: `python -m venv backend/.venv-run` from the repository root, then `uv pip install --python backend/.venv-run/Scripts/python.exe -r backend/requirements.txt`. The `.venv-run` directory is ignored by Git; the old `.venv` was left untouched. Python 3.11 remains the recommended setup when available.
+For this checkout, use `backend/.venv` for the backend. The separate `.venv-run` environment is missing the NVIDIA cuBLAS wheel, so Faster-Whisper silently falls back to slower CPU inference there. The current `.venv` contains the pinned CUDA runtime wheels and has passed a real Hindi transcription on CUDA/float16. Install `backend/requirements.txt` into any replacement environment before selecting CUDA.
 
 Start Ollama in a separate terminal if it is not already running. Then check and install the configured chat model explicitly:
 
@@ -117,19 +117,13 @@ Continuous hands-free listening is now the default; clap activation has been rem
 
 The browser audio analyser now routes through a zero-gain node to keep its Web Audio graph active without monitoring microphone audio through speakers. It samples 512-sample frames every 10 ms, retains the existing generation guard for late microphone/recorder events, and releases browser resources on stop. Automated tests mock these browser APIs; no physical microphone or speaker verification has been performed.
 
-CUDA diagnosis on the current Windows runtime reproduced the exact Faster-Whisper inference error: `Library cublas64_12.dll is not found or cannot be loaded`. The GPU is enumerated by CTranslate2, but enumeration/model construction is not inference proof. When `STT_DEVICE=cuda` is explicitly configured, the service now falls back to CPU/int8 if CUDA model initialization or a CUDA-specific inference call fails, records the fallback reason, and retries the request once. Successful device reporting reflects the device that actually returned text. CUDA 12 cuBLAS and cuDNN 9 runtimes are absent from the verified environment; no toolkit/runtime was installed. CPU/int8 remains the only verified path. See [benchmark-results.md](benchmark-results.md).
-
-The fix is scoped to Python: install compatible NVIDIA runtime wheels or toolkit components only after reviewing versions and impact. Faster-Whisper's current GPU requirements specify CUDA 12 and cuDNN 9. Do not infer compatibility from `nvidia-smi`'s driver CUDA version, and do not change the global system PATH or replace the working CPU dependencies without a real transcription test. The CUDA runtime installation is awaiting user approval.
-
-CUDA/float16 is enabled in this machine's local `.env`. The backend registers and preloads the CUDA 12.4 runtime libraries installed in its virtual environment; a real Faster-Whisper transcription has verified GPU inference. CPU/int8 remains the automatic fallback if CUDA initialization or inference fails. Merely seeing a CUDA version in `nvidia-smi` is not proof. `GET /api/diagnostics` distinguishes configured device, last successful inference device, CUDA library presence, and Ollama's reported loaded-model VRAM bytes. Piper stays CPU.
+The `.venv-run` failure reproduced as `Library cublas64_12.dll is not found or cannot be loaded`. The active `.venv` has the required runtime wheels: `GET /api/diagnostics` reports cuBLAS/cuDNN present and CUDA inference verified after transcription. A Piper-generated Hindi question was transcribed on CUDA/float16; CPU/int8 remains the automatic fallback if CUDA initialization or inference fails. Diagnostics report the last successful device and fallback reason. Piper remains on CPU.
 
 Use [Faster-Whisper's GPU requirements](https://github.com/SYSTRAN/faster-whisper#gpu) and the [NVIDIA Windows CUDA installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/) to select compatible installers. After installing, open a **new** PowerShell terminal and verify the DLLs before changing `.env`:
 
 ```powershell
-where.exe cublas64_12.dll
-where.exe cudnn64_9.dll
 cd D:\Trikon-Voice-AI\backend
-.\.venv-run\Scripts\python.exe -c "from app.core.config import Settings; from app.services.stt import SpeechToTextService; print(SpeechToTextService(Settings(stt_device='cuda', stt_compute_type='float16')).transcribe('sample.wav'))"
+\.venv\Scripts\python.exe -c "from app.core.config import Settings; from app.services.stt import SpeechToTextService; print(SpeechToTextService(Settings(stt_device='cuda', stt_compute_type='float16')).transcribe('sample.wav'))"
 ```
 
-The last command requires an existing short `sample.wav` in `backend/`; use a real clip you recorded. Only a successful non-empty transcription verifies CUDA STT. The PATH checks did not find either DLL in the current terminal, while the runtime separately found cuDNN 9 but failed to load cuBLAS 12. No CUDA package was installed or enabled automatically.
+The last command requires an existing short `sample.wav` in `backend/`. A successful non-empty transcription verifies CUDA STT; `nvidia-smi` device visibility alone does not.

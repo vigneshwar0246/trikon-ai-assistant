@@ -140,7 +140,7 @@ export function useHandsFree(options: HandsFreeOptions) {
     analyser.getFloatTimeDomainData(samples);
     const frame = analyzeAudioFrame(samples);
     const now = performance.now();
-    const threshold = Math.max(optionsRef.current.speechThreshold ?? 0.015, noiseFloorRef.current * 2.7);
+    const threshold = Math.max(optionsRef.current.speechThreshold ?? 0.009, noiseFloorRef.current * 2.4);
     if (statusRef.current === "processing" && optionsRef.current.monitorInterruption) {
       interruptionStartedAtRef.current ??= now;
       const warmupMs = optionsRef.current.interruptionWarmupMs ?? 0;
@@ -200,7 +200,7 @@ export function useHandsFree(options: HandsFreeOptions) {
       const context = new AudioContext();
       contextRef.current = context;
       const audioReady = context.resume().then(() => null, (error: unknown) => error);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       if (generation !== generationRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       streamRef.current = stream;
       const resumeError = await audioReady;

@@ -90,6 +90,10 @@ class SpeechToTextService:
                     self._language_models[language] = WhisperModel(str(path), device="cpu", compute_type="int8")
         return self._language_models[language]
 
+    def prepare(self, language: str) -> None:
+        """Load the selected speech recognizer before the user starts speaking."""
+        self._get_model_for_language(language)
+
     def _load_model(self, device: str, compute_type: str) -> Any:
         if device.lower() == "cuda":
             configure_cuda_dll_directories()

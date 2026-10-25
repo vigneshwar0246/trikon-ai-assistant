@@ -259,7 +259,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     try {
       setError(null);
       setPhase("requesting-permission");
-      stream.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      stream.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       chunks.current = [];
       recorder.current = new MediaRecorder(stream.current);
       recorder.current.addEventListener("dataavailable", (event) => { if (event.data.size) chunks.current.push(event.data); });

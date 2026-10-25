@@ -50,13 +50,14 @@ class OllamaClient:
         if self._client is not None:
             await self._client.aclose()
 
-    async def warm_model(self) -> None:
-        """Keep the configured local model resident without generating a reply."""
+    async def warm_model(self, model: str | None = None) -> None:
+        """Keep a local model resident without generating a user-visible reply."""
+        selected_model = model or self.settings.ollama_model
         try:
             response = await self._get_client().post(
                 f"{self.settings.ollama_base_url}/api/generate",
                 json={
-                    "model": self.settings.ollama_model, "prompt": "Ready", "stream": False,
+                    "model": selected_model, "prompt": "Ready", "stream": False,
                     "keep_alive": "30m", "options": {
                         "num_predict": 1, "num_ctx": self.settings.ollama_num_ctx,
                         "temperature": self.settings.ollama_temperature,
@@ -66,7 +67,7 @@ class OllamaClient:
             )
             if response.status_code == 404:
                 raise OllamaModelMissingError(
-                    f"Ollama model '{self.settings.ollama_model}' is missing. Pull it with 'ollama pull {self.settings.ollama_model}'."
+                    f"Ollama model '{selected_model}' is missing. Pull it with 'ollama pull {selected_model}'."
                 )
             response.raise_for_status()
         except httpx.TimeoutException as exc:

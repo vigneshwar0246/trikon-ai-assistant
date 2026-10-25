@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         tts=app.state.tts,
         voice_num_predict=settings.voice_num_predict,
         voice_hi_num_predict=settings.voice_hi_num_predict,
+        hindi_num_predict=settings.ollama_hi_num_predict,
         hindi_model=settings.ollama_hi_model,
     )
     warmup = asyncio.create_task(app.state.ollama.warm_model())

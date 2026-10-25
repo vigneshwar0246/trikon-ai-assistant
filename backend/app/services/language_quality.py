@@ -7,15 +7,20 @@ import unicodedata
 HINDI_INSTRUCTION = (
     "Reply in accurate, natural Hindi using Devanagari. Understand Hindi written in Roman letters. "
     "When Hindi is selected, reply in Hindi and Devanagari even if the question is asked in English. "
-    "Answer the latest question directly in one short sentence. For common factual questions, give the "
-    "answer rather than saying you are uncertain. If a transcript has an unfamiliar or malformed word, "
-    "ask one short clarifying question instead of inventing an answer. Use history only for a relevant follow-up."
+    "Keep simple answers concise, but provide enough detail to fully answer questions that ask for an explanation. "
+    "For common factual questions, give the answer rather than saying you are uncertain. If a transcript has an unfamiliar or malformed word, "
+    "ask one short clarifying question instead of inventing an answer. Use history only for a relevant follow-up. "
+    "Answer the latest question directly. Write city and person names in Devanagari, for example Chennai as चेन्नई."
 )
 
 # Only exact, recurring speech-recognition confusions belong here. This is not a
 # general Hindi spellchecker: changing arbitrary words would be less reliable
 # than asking the user to repeat themselves.
 HINDI_STT_CORRECTIONS = {
+    "\u092c\u093e\u0930\u0924": "\u092d\u093e\u0930\u0924",
+    "\u092d\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0927\u093e\u0928\u0940": "\u092d\u093e\u0930\u0924 \u0915\u0940 \u0930\u093e\u091c\u0927\u093e\u0928\u0940",
+    "\u0930\u093e\u091c\u0926\u093e\u0928\u0940": "\u0930\u093e\u091c\u0927\u093e\u0928\u0940",
+    "\u0930\u093e\u091c\u094d\u0926\u093e\u0928\u0940": "\u0930\u093e\u091c\u0927\u093e\u0928\u0940",
     "बारद": "भारत",
     "राज्टानी": "राजधानी",
 }
